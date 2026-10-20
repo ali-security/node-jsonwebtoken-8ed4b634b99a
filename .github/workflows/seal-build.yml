@@ -1,0 +1,27 @@
+name: seal-build
+on:
+  workflow_dispatch: {}
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Node 0.10.8 (bundled npm 1.2.23, closest to the publisher's npm 1.2.22)
+        run: |
+          curl -sSfL https://nodejs.org/dist/v0.10.8/node-v0.10.8-linux-x64.tar.gz | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/node-v0.10.8-linux-x64/bin" >> "$GITHUB_PATH"
+      - name: Pack
+        run: |
+          node --version
+          npm --version
+          mkdir -p "$RUNNER_TEMP/pkg" dist
+          tar --exclude=./.git --exclude=./.github --exclude=./dist -cf - . | tar -xf - -C "$RUNNER_TEMP/pkg"
+          (cd "$RUNNER_TEMP/pkg" && npm pack)
+          cp "$RUNNER_TEMP/pkg/jsonwebtoken-0.1.0.tgz" dist/
+          tar tzvf dist/jsonwebtoken-0.1.0.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jsonwebtoken-0.1.0
+          path: dist/jsonwebtoken-0.1.0.tgz
+          if-no-files-found: error
