@@ -28,6 +28,18 @@ module.exports.verify = function(jwtString, secretOrPublicKey, options, callback
   if ((typeof options === 'function') && !callback) callback = options;
   if (!options) options = {};
 
+  var algorithms = options.algorithms;
+
+  if (!algorithms) {
+    var key = secretOrPublicKey ? secretOrPublicKey.toString() : '';
+    algorithms = ~key.indexOf('BEGIN CERTIFICATE') ||
+                 ~key.indexOf('BEGIN PUBLIC KEY') ?
+                  [ 'RS256','RS384','RS512','ES256','ES384','ES512' ] :
+                 ~key.indexOf('BEGIN RSA PUBLIC KEY') ?
+                  [ 'RS256','RS384','RS512' ] :
+                  [ 'HS256','HS384','HS512' ];
+  }
+
   var valid;
   try {
     valid = jws.verify(jwtString, secretOrPublicKey);
@@ -40,6 +52,9 @@ module.exports.verify = function(jwtString, secretOrPublicKey, options, callback
     return callback(new Error('invalid signature'));
   
   var jwt = jws.decode(jwtString);
+
+  if (!jwt || !jwt.header || !~algorithms.indexOf(jwt.header.alg))
+    return callback(new Error('invalid signature'));
 
   if (jwt.payload.exp) {
     if (moment().utc().unix() >= jwt.payload.exp)
